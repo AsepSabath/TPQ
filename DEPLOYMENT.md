@@ -153,6 +153,8 @@ php artisan view:cache
 
 Di repo ini sudah ada script siap pakai: [deploy-vps.sh](deploy-vps.sh).
 
+Saat dijalankan, script akan meminta input domain dan mengecek apakah DNS domain sudah mengarah ke IP publik VPS.
+
 Contoh menjalankan dari VPS sebagai root:
 
 ```bash
@@ -171,6 +173,12 @@ DB_PASSWORD=password_kuat \
 ```
 
 Kalau asset frontend mau dibangun di server, biarkan `SKIP_NPM_BUILD=false`. Jika sudah di-build di lokal, set `SKIP_NPM_BUILD=true`.
+
+Kalau ingin mode non-interaktif (misalnya CI/CD), set `DOMAIN` saat eksekusi:
+
+```bash
+DOMAIN=app.example.com ./deploy-vps.sh
+```
 
 ## 4. Nginx
 

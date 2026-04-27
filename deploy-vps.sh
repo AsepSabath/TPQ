@@ -15,7 +15,7 @@ DB_PORT="${DB_PORT:-3306}"
 DB_DATABASE="${DB_DATABASE:-tpq}"
 DB_USERNAME="${DB_USERNAME:-tpq_user}"
 DB_PASSWORD="${DB_PASSWORD:-ganti_password_ini}"
-APP_URL="${APP_URL:-https://domain-anda.com}"
+APP_URL="${APP_URL:-}"
 WA_ENABLED="${WA_ENABLED:-false}"
 WA_ENDPOINT="${WA_ENDPOINT:-}"
 WA_TOKEN="${WA_TOKEN:-}"
@@ -25,6 +25,84 @@ SKIP_NPM_BUILD="${SKIP_NPM_BUILD:-false}"
 
 log() {
     printf '\n[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"
+}
+
+is_default_domain() {
+    [[ "$1" == "" || "$1" == "domain-anda.com" ]]
+}
+
+get_public_ip() {
+    local ip
+    ip="$(curl -4fsS https://api.ipify.org 2>/dev/null || true)"
+    if [[ -z "$ip" ]]; then
+        ip="$(curl -4fsS https://ifconfig.me 2>/dev/null || true)"
+    fi
+    printf '%s' "$ip"
+}
+
+get_domain_ip() {
+    local domain="$1"
+    getent ahostsv4 "$domain" 2>/dev/null | awk '{print $1}' | head -n 1
+}
+
+prompt_domain() {
+    local server_ip
+    local domain_ip
+
+    server_ip="$(get_public_ip)"
+
+    if [[ -z "$server_ip" ]]; then
+        log "Peringatan: tidak bisa mendeteksi IP publik VPS otomatis."
+        log "Pastikan domain benar-benar sudah diarahkan ke VPS sebelum lanjut."
+    fi
+
+    if [[ -t 0 ]]; then
+        while true; do
+            read -r -p "Masukkan domain yang sudah pointing ke VPS (contoh: app.example.com): " DOMAIN
+
+            if [[ -z "$DOMAIN" ]]; then
+                echo "Domain tidak boleh kosong." >&2
+                continue
+            fi
+
+            domain_ip="$(get_domain_ip "$DOMAIN")"
+            if [[ -z "$domain_ip" ]]; then
+                echo "Domain tidak resolve ke IP publik. Cek DNS dulu, lalu coba lagi." >&2
+                continue
+            fi
+
+            if [[ -n "$server_ip" && "$domain_ip" != "$server_ip" ]]; then
+                echo "Domain resolve ke $domain_ip, sedangkan IP VPS terdeteksi $server_ip." >&2
+                echo "Pastikan domain sudah pointing ke VPS, lalu input ulang." >&2
+                continue
+            fi
+
+            break
+        done
+    else
+        if is_default_domain "$DOMAIN"; then
+            echo "Mode non-interaktif butuh DOMAIN yang valid. Contoh: DOMAIN=app.example.com ./deploy-vps.sh" >&2
+            exit 1
+        fi
+
+        domain_ip="$(get_domain_ip "$DOMAIN")"
+        if [[ -z "$domain_ip" ]]; then
+            echo "DOMAIN=$DOMAIN tidak resolve ke IP publik." >&2
+            exit 1
+        fi
+
+        if [[ -n "$server_ip" && "$domain_ip" != "$server_ip" ]]; then
+            echo "DOMAIN=$DOMAIN resolve ke $domain_ip, tidak sama dengan IP VPS $server_ip." >&2
+            echo "Perbaiki DNS dulu baru jalankan ulang script." >&2
+            exit 1
+        fi
+    fi
+
+    if [[ -z "$APP_URL" || "$APP_URL" == "https://domain-anda.com" ]]; then
+        APP_URL="https://${DOMAIN}"
+    fi
+
+    log "Domain tervalidasi: ${DOMAIN}"
 }
 
 escape_sed_replacement() {
@@ -258,6 +336,7 @@ setup_cron() {
 main() {
     require_root
     install_packages
+    prompt_domain
     prepare_app_dir
     write_env_file
     install_app_dependencies
