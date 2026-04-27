@@ -33,6 +33,12 @@ git commit -m "Update project"
 git push
 ```
 
+5. Untuk repo ini, remote yang dipakai adalah:
+
+```bash
+https://github.com/AsepSabath/TPQ.git
+```
+
 ## 2. Persiapan VPS Ubuntu 24.04
 
 ### Paket yang perlu dipasang
@@ -142,6 +148,29 @@ php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 ```
+
+### Opsi paling cepat: pakai script Bash
+
+Di repo ini sudah ada script siap pakai: [deploy-vps.sh](deploy-vps.sh).
+
+Contoh menjalankan dari VPS sebagai root:
+
+```bash
+chmod +x deploy-vps.sh
+APP_DIR=/var/www/tpq \
+REPO_URL=https://github.com/AsepSabath/TPQ.git \
+DOMAIN=domain-anda.com \
+APP_URL=https://domain-anda.com \
+DB_CONNECTION=mysql \
+DB_HOST=127.0.0.1 \
+DB_PORT=3306 \
+DB_DATABASE=tpq \
+DB_USERNAME=tpq_user \
+DB_PASSWORD=password_kuat \
+./deploy-vps.sh
+```
+
+Kalau asset frontend mau dibangun di server, biarkan `SKIP_NPM_BUILD=false`. Jika sudah di-build di lokal, set `SKIP_NPM_BUILD=true`.
 
 ## 4. Nginx
 
